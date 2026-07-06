@@ -19,3 +19,18 @@
 
 - そのままダブルクリックでローカル利用可
 - WordPress固定ページ・レンタルサーバー・GitHub Pages などに `index.html` を置くだけで公開できます（外部依存なし）
+
+## Vercelでのデプロイ
+
+ビルド不要の静的サイトとして、そのままVercelで動きます（`vercel.json` 設定済み）。
+
+1. [vercel.com](https://vercel.com) にGitHubアカウントでログイン
+2. **Add New… → Project** で `makohiraishi-art/catorce-lp` をインポート
+3. Framework Preset は **Other** のまま、Build Command / Output Directory も**空欄のまま**で **Deploy**
+4. 発行されたURL（`https://<プロジェクト名>.vercel.app`）にアクセスして稼働確認
+
+### ブランチについて
+
+- Vercelの本番デプロイは既定で `main` ブランチが対象です
+- このツールは `claude/slide-prompt-generator-d3u42m` ブランチにあるため、**PRを作成してmainにマージする**か、Vercelのプロジェクト設定 **Settings → Git → Production Branch** を `claude/slide-prompt-generator-d3u42m` に変更してください
+- リポジトリ接続後は、ブランチへのプッシュごとにプレビューURLも自動発行されます
