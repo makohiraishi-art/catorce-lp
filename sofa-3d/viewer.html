@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コーデュロイソファ 3Dビューア</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f5f5f5; font-family: system-ui, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  .hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: rgba(255,255,255,.85); backdrop-filter: blur(6px);
+    border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #333;
+    box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  }
+  .hud h1 { font-size: 14px; margin: 0 0 6px; }
+  .hud button {
+    margin-top: 8px; padding: 6px 14px; border: 0; border-radius: 6px;
+    background: #5f7876; color: #fff; font-size: 13px; cursor: pointer;
+  }
+  .hud button:hover { background: #6d8683; }
+</style>
+</head>
+<body>
+<div class="hud">
+  <h1>コーデュロイソファ(2人掛け)</h1>
+  <div>W1760 × D880 × H850 mm ・ ドラッグで回転 / ホイールでズーム</div>
+  <button id="dl">GLB をダウンロード</button>
+</div>
+<div id="app"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { createSofa } from './sofa.js';
+
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f5f5);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d8d8, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(2.5, 5, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = key.shadow.camera.bottom = -2;
+key.shadow.camera.right = key.shadow.camera.top = 2;
+key.shadow.radius = 6;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+fill.position.set(-3, 2, -2);
+scene.add(fill);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(12, 12),
+  new THREE.ShadowMaterial({ opacity: 0.10 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const sofa = createSofa(THREE);
+scene.add(sofa);
+
+const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 100);
+camera.position.set(2.4, 1.2, 3.2);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.42, 0);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI / 2 + 0.05;
+controls.minDistance = 1;
+controls.maxDistance = 12;
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+document.getElementById('dl').addEventListener('click', () => {
+  new GLTFExporter().parse(
+    sofa,
+    (buf) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
+      a.download = 'sofa.glb';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    },
+    console.error,
+    { binary: true }
+  );
+});
+</script>
+</body>
+</html>

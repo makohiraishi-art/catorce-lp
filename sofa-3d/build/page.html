@@ -1,0 +1,91 @@
+<!-- ビルド用ページ: ヘッドレスChromiumで読み込み、レンダリング画像とGLBを生成する -->
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#f5f5f5}</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/build/node_modules/three/build/three.module.js",
+    "three/addons/": "/build/node_modules/three/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { createSofa } from '/sofa.js';
+
+const SIZE = 900;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f5f5);
+
+// スタジオ調ライティング(白ホリゾント風)
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d8d8, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 1.6);
+key.position.set(2.5, 5, 4);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = key.shadow.camera.bottom = -2;
+key.shadow.camera.right = key.shadow.camera.top = 2;
+key.shadow.radius = 6;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+fill.position.set(-3, 2, -2);
+scene.add(fill);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(10, 10),
+  new THREE.ShadowMaterial({ opacity: 0.10 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const sofa = createSofa(THREE);
+scene.add(sofa);
+
+const camera = new THREE.PerspectiveCamera(20, 1, 0.1, 100);
+const target = new THREE.Vector3(0, 0.42, 0);
+const VIEWS = {
+  front: [0, 0.55, 5.2],
+  angle: [3.2, 1.3, 4.2],
+  side:  [5.4, 0.55, 0],
+  back:  [0, 0.55, -5.4],
+};
+
+window.api = {
+  shot(view) {
+    camera.position.set(...VIEWS[view]);
+    camera.lookAt(target);
+    renderer.render(scene, camera);
+    return renderer.domElement.toDataURL('image/png');
+  },
+  exportGLB() {
+    return new Promise((resolve, reject) => {
+      new GLTFExporter().parse(
+        sofa,
+        (buf) => {
+          const bytes = new Uint8Array(buf);
+          let bin = '';
+          const CHUNK = 0x8000;
+          for (let i = 0; i < bytes.length; i += CHUNK) {
+            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+          }
+          resolve(btoa(bin));
+        },
+        reject,
+        { binary: true }
+      );
+    });
+  },
+};
+window.READY = true;
+</script>
